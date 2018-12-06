@@ -19,12 +19,14 @@ class Firebase:
         self.desired_state = None
         self.login()
 
+    # Keep cloud connection open
     def kick(self):
         print("FIREBASE: kick")
         elapsed = time.monotonic() - self.token_renewal_time
         if elapsed > self.FIREBASE_DEVICE_TWIN_POLL_TIME:
             self.read_state() # Implicit refresh_token
 
+    # Post telemetry to cloud
     def post_telemetry(self, telemetry):
         print("FIREBASE: post_telemetry")
         self.refresh_token()
@@ -48,6 +50,7 @@ class Firebase:
         else:
             print("FIREBASE: Not logged in. No telemetry sent. @ {}".format(datetime.datetime.now()))
 
+    # Read desired state from cloud
     def read_state(self, bank='desired'):
         print("FIREBASE: read_state")
         self.refresh_token()
@@ -72,6 +75,7 @@ class Firebase:
             if self.application:
                 self.application.device_twin_update(new_state)
         
+    # Report current state to cloud
     def update_reported_state(self, device_twin, bank='reported'):
         print("FIREBASE: update_reported_state")
         self.refresh_token()
@@ -91,6 +95,7 @@ class Firebase:
 
         return device_twin
 
+    # Login to Firebase
     def login(self):
         # Get a reference to the auth service
         print("FIREBASE login")
@@ -103,6 +108,7 @@ class Firebase:
             print("FIREBASE: Login failed.")
             print(e)
 
+    # Refresh Firebase token to keep connection alive
     def refresh_token(self):
         print("FIREBASE: refresh_token")
         self.token_renewal_time = time.monotonic()    

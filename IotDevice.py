@@ -1,3 +1,5 @@
+# Main file
+
 from iotversion import *
 
 import time
@@ -48,6 +50,7 @@ class IotDevice:
         self.hub = Firebase(self, device_config)
         #self.hub = Azure(self, device_config)
 
+    # Callback when the device twin stored in cloud has been updated
     def device_twin_update(self, desired):
         self.got_twin_state_after_boot = True
 
@@ -72,6 +75,10 @@ class IotDevice:
             print(e)
         self.new_interval_set = True
         
+    # Sleep for t seconds while 
+    # - checking for temp alerts
+    # - kicking hub connection
+    # - checking if telemetryInterval has been updated
     def my_sleep(self, t):
         if t is None:
             t = 60
@@ -87,6 +94,7 @@ class IotDevice:
                 self.new_interval_set = False
                 break
 
+    # Main loop
     def main_loop(self):
         print ( "Starting IoT Device with ID '{}'".format(self.device_config.deviceid) )
         try:
@@ -99,6 +107,7 @@ class IotDevice:
                     try:
                         reported[KEY_TEMPERATURE_SETPOINT] = self.desired[KEY_TEMPERATURE_SETPOINT]
                     except:
+                        # No temperature set point
                         pass
                     reported[KEY_TEMPERATURE_CURRENT] = tempCurrent
                     if (tempCurrent < TEMP_ALERT_LOW) or (tempCurrent > TEMP_ALERT_HIGH):
@@ -130,6 +139,7 @@ class IotDevice:
             print ( "IoTHubClient sample stopped" )
 
 
+# Main program
 device_config = DeviceConfig()
 if device_config.logfile is not None:
     sys.stdout = open(device_config.logfile, "w")

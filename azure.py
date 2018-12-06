@@ -41,6 +41,7 @@ class Azure:
             self.hubClient.set_device_twin_callback(
                 device_twin_callback, TWIN_CONTEXT)
 
+    # Report current state to cloud
     def update_reported_state(self, reported):
         try:
             # Report new state to HUB
@@ -52,6 +53,7 @@ class Azure:
         except IoTHubError as iothub_error:
             print ( "AZURE: Unexpected error from IoTHub when reporting state: %s" % iothub_error )
         
+    # Post telemetry to cloud
     def post_telemetry(self, telemetry):
         try:
             message = IoTHubMessage(json.dumps(telemetry))
@@ -59,6 +61,7 @@ class Azure:
         except IoTHubError as iothub_error:
             print ( "AZURE: Unexpected error from IoTHub when posting telemetry: %s" % iothub_error )
     
+    # Keep cloud connection open (not needed for azure)
     def kick(self):
         pass
         

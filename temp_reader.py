@@ -5,6 +5,7 @@ import random
 import platform
 from device_config import DeviceConfig
 
+# Read a DS1820 temp sensor
 class Temperature:
 
     AVERAGE_INTERVAL = 20
@@ -25,12 +26,15 @@ class Temperature:
                 self.hardware = False
                 print("No temp sensor found. Simulating temp readings")
 
+    # Read DS1820 output
     def read_temp_raw(self):
         lines = ""
         with open(self.device_file, 'r') as f:
             lines = f.readlines()
         return lines
         
+    # Read temp and calculate a rolling average over AVERAGE_INTERVAL samples
+    # return (currentTemp, averageTemp)
     def get(self):
         if self.hardware:
             lines = self.read_temp_raw()

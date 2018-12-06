@@ -9,12 +9,15 @@ class Weather:
         with open('weather.json') as f:
             self.config = json.load(f)
 
-            self.WEATHER_UPDATE_INTERVAL = 60*60
-        self.weather_request = "http://api.openweathermap.org/data/2.5/weather?lat={}&lon={}&units=metric&APPID={}".format(
-            self.config["lat"], self.config["long"], self.config["appid"])
+        self.WEATHER_UPDATE_INTERVAL = 60*60
         self.last_fetched_at = -10000
         self.current = None
+        self.weather_request = "http://api.openweathermap.org/data/2.5/weather?lat={}&lon={}&units=metric&APPID={}".format(
+            self.config["lat"], 
+            self.config["long"], 
+            self.config["appid"])
         
+    # Fetch weather from openweathermap, if more than WEATHER_UPDATE_INTERVAL since last fetch
     def get(self):
         elapsed = time.monotonic() - self.last_fetched_at
         if elapsed > self.WEATHER_UPDATE_INTERVAL:
