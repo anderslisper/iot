@@ -12,13 +12,6 @@ class Firebase:
         with open('firebase.json') as f:
             self.config = json.load(f)
 
-#        config = {
-#          "apiKey": "AIzaSyAVgDkyN0xUDOyqeyRNskR4_b8Jpr-SX_c",
-#          "authDomain": "gundbyn-iot.firebaseapp.com",
-#          "databaseURL": "https://gundbyn-iot.firebaseio.com",
-#          "storageBucket": "gundbyn-iot.appspot.com"
-#        }
-
         self.deviceid = device_config.deviceid
         self.hub = pyrebase.initialize_app(self.config['db_config'])
         self.FIREBASE_DEVICE_TWIN_POLL_TIME = 5*60 # Must be shorter than token lease time (1h)

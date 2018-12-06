@@ -28,10 +28,15 @@ class AzureIot:
             azureiot_singelton = self
         else:
             raise Exception("AZURE: AzureIot instance already created")
+
+        with open('azure.json') as f:
+            self.config = json.load(f)
+
+        if self.config['connection_string'].find(device_config.deviceid) == -1:
+            raise Exception("Azure connection string does not match configured device id")
             
         self.application = application
-        self.hubClient   = IoTHubClient(device_config.connection_string, PROTOCOL)
-
+        self.hubClient   = IoTHubClient(self.config['connection_string'], PROTOCOL)
         if self.hubClient.protocol == IoTHubTransportProvider.MQTT or self.hubClient.protocol == IoTHubTransportProvider.MQTT_WS:
             self.hubClient.set_device_twin_callback(
                 device_twin_callback, TWIN_CONTEXT)
