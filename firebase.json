@@ -1,0 +1,10 @@
+{
+    "db_config": {
+        "apiKey":        "<API-KEY>",
+        "authDomain":    "<project>.firebaseapp.com",
+        "databaseURL":   "https://<project>.firebaseio.com",
+        "storageBucket": "<project>.appspot.com"
+    },
+    "user": "<user>",
+    "password": "<password>"
+}

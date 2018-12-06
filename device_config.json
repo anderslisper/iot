@@ -1,0 +1,5 @@
+{
+    "is_simulated": true,
+    "connection_string": "<azure connection string>",
+    "logfile": null
+}
