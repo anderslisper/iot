@@ -9,7 +9,7 @@ from temp_reader   import Temperature
 from air_condition import AirCondition
 from weather       import Weather
 from firebase      import Firebase
-from azureiot      import AzureIot
+from azure         import Azure
 
 DEFAULT_TELEMETRY       = 20*60   # 20 min
 DEFAULT_TEMP            = 21      # deg C
@@ -46,7 +46,7 @@ class IotDevice:
         self.temperature  = Temperature(device_config)
         
         self.hub = Firebase(self, device_config)
-        #self.hub = AzureIot(self, device_config)
+        #self.hub = Azure(self, device_config)
 
     def device_twin_update(self, desired):
         self.got_twin_state_after_boot = True

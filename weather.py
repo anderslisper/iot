@@ -6,8 +6,12 @@ import json
 class Weather:
 
     def __init__(self):
-        self.WEATHER_UPDATE_INTERVAL = 60*60
-        self.weather_request = "http://api.openweathermap.org/data/2.5/weather?lat=60.08&lon=17.9&units=metric&APPID=7887aae3408a6f84623247cc0aface84"
+        with open('weather.json') as f:
+            self.config = json.load(f)
+
+            self.WEATHER_UPDATE_INTERVAL = 60*60
+        self.weather_request = "http://api.openweathermap.org/data/2.5/weather?lat={}&lon={}&units=metric&APPID={}".format(
+            self.config["lat"], self.config["long"], self.config["appid"])
         self.last_fetched_at = -10000
         self.current = None
         
