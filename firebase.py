@@ -21,14 +21,14 @@ class Firebase:
 
     # Keep cloud connection open
     def kick(self):
-        print("FIREBASE: kick")
+        #print("FIREBASE: kick")
         elapsed = time.monotonic() - self.token_renewal_time
         if elapsed > self.FIREBASE_DEVICE_TWIN_POLL_TIME:
             self.read_state() # Implicit refresh_token
 
     # Post telemetry to cloud
     def post_telemetry(self, telemetry):
-        print("FIREBASE: post_telemetry")
+        #print("FIREBASE: post_telemetry")
         self.refresh_token()
         user = self.user
         
@@ -52,7 +52,7 @@ class Firebase:
 
     # Read desired state from cloud
     def read_state(self, bank='desired'):
-        print("FIREBASE: read_state")
+        #print("FIREBASE: read_state")
         self.refresh_token()
         user = self.user
         new_state = None
@@ -110,7 +110,7 @@ class Firebase:
 
     # Refresh Firebase token to keep connection alive
     def refresh_token(self):
-        print("FIREBASE: refresh_token")
+        #print("FIREBASE: refresh_token")
         self.token_renewal_time = time.monotonic()    
         try:
             refresh = self.hub.auth().refresh(self.user['refreshToken'])
