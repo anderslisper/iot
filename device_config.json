@@ -1,5 +1,8 @@
 {
     "is_simulated": true,
     "deviceid": "NewSimulated",
-    "logfile": null
+    "logfile": null,
+    "cloud": "firebase",
+    "temp_sampling": 5,
+    "temp_average": 120
 }

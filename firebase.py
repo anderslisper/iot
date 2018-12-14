@@ -14,7 +14,10 @@ class Firebase:
 
         self.deviceid = device_config.deviceid
         self.hub = pyrebase.initialize_app(self.config['db_config'])
-        self.FIREBASE_DEVICE_TWIN_POLL_TIME = 5*60 # Must be shorter than token lease time (1h)
+        self.FIREBASE_DEVICE_TWIN_POLL_TIME = 5*60 # 5 min. Tradeoff between resource util and response time when changing set temperature
+        if self.FIREBASE_DEVICE_TWIN_POLL_TIME > 55*60:
+            # Token refresh time is 1h. We should keep it alive by checking device twin at least once every 55 mins
+            raise Exception("FIREBASE: Device twin poll time must be less than 55min")
         self.token_renewal_time = -10000
         self.desired_state = None
         self.login()

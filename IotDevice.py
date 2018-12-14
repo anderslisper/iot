@@ -47,8 +47,12 @@ class IotDevice:
         self.airCondition = AirCondition(device_config)
         self.temperature  = Temperature(device_config)
         
-        self.hub = Firebase(self, device_config)
-        #self.hub = Azure(self, device_config)
+        if device_config.cloud == "firebase":
+            self.hub = Firebase(self, device_config)
+        elif device_config.cloud == "azure":
+            self.hub = Azure(self, device_config)
+        else:
+            raise Exception("Supported cloud services are 'azure' and 'firebase'. Update 'device_config.json'.")
 
     # Callback when the device twin stored in cloud has been updated
     def device_twin_update(self, desired):
@@ -85,7 +89,7 @@ class IotDevice:
         expire = time.monotonic() + (t-2)
         while (time.monotonic() < expire):
             self.hub.kick()
-            time.sleep(5)
+            time.sleep(device_config.temp_sampling)
             temp_c, temp_a = self.temperature.get()
             alert = (temp_a < TEMP_ALERT_LOW) or (temp_a > TEMP_ALERT_HIGH)
             if alert != self.reported_temp_alert:

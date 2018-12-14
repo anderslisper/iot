@@ -8,10 +8,9 @@ from device_config import DeviceConfig
 # Read a DS1820 temp sensor
 class Temperature:
 
-    AVERAGE_INTERVAL = 20
-
     def __init__(self, device_config):
         self.temp_readings = []
+        self.AVERAGE_INTERVAL = device_config.temp_average
         if device_config.is_simulated:
             self.hardware = False
         else:
