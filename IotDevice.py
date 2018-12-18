@@ -79,7 +79,7 @@ class IotDevice:
             print(e)
         self.new_interval_set = True
         
-    # Sleep for t seconds while 
+    # Sleep for t seconds while every <device_config.temp_sampling> seconds...
     # - checking for temp alerts
     # - kicking hub connection
     # - checking if telemetryInterval has been updated

@@ -16,11 +16,13 @@ class DeviceConfig:
         s = ""
         if self.is_simulated:
             s = "SIMULATED "
+
         if self.logfile:
-            l = "with logging in " + self.logfile
+            l = self.logfile
         else:
-            l = "with logging to stdout"
-        print("Starting {}device {} {}".format(s, self.deviceid, l))
+            l = "stdout"
+
+        print("Starting {}device {} with logging to {}".format(s, self.deviceid, l))
             
 if __name__ == '__main__':
     device = DeviceConfig()

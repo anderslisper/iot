@@ -47,6 +47,7 @@ class Temperature:
                 temp_string = lines[1][equals_pos+2:]
                 temp_c = float(temp_string) / 1000.0
         else:
+            # Simulating a temp around 21 deg C
             temp_c = 21 + (random.random() * 3) - 1.5
 
         self.temp_readings.append(temp_c)
