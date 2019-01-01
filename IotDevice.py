@@ -63,22 +63,27 @@ class IotDevice:
         print ( "New desired state received: %s" % json.dumps(self.desired, indent=4) )
         try:
             # Report new state to HUB
-            reported = {}
-            reported[KEY_SW]          = SOFTWARE_DICT
-            reported[KEY_UPDATE_TIME] = datetime.datetime.now().isoformat()
-            for key in [KEY_LOCATION, KEY_TELEMETRY_INTERVAL, KEY_TEMPERATURE_SETPOINT]:
-                try:
-                    reported[key] = self.desired[key]
-                except KeyError:
-                    print("State set from HUB lack key '%s'" % key)
-            # Report new state to HUB
-            self.hub.update_reported_state(reported)
+            self.update_reported_state()
             # Set AC temp
             self.airCondition.set_temp(self.desired[KEY_TEMPERATURE_SETPOINT])
         except Exception as e:
             print(e)
         self.new_interval_set = True
-        
+
+    # Send current state to HUB
+    def update_reported_state(self):
+        reported = {}
+        reported[KEY_SW]              = SOFTWARE_DICT
+        reported[KEY_UPDATE_TIME]     = datetime.datetime.now().isoformat()
+        reported[KEY_TELEMETRY_ALERT] = self.reported_temp_alert
+        for key in [KEY_LOCATION, KEY_TELEMETRY_INTERVAL, KEY_TEMPERATURE_SETPOINT]:
+            try:
+                reported[key] = self.desired[key]
+            except KeyError:
+                print("State set from HUB lack key '%s'" % key)
+        # Report new state to HUB
+        self.hub.update_reported_state(reported)
+    
     # Sleep for t seconds while every <device_config.temp_sampling> seconds...
     # - checking for temp alerts
     # - kicking hub connection
@@ -107,27 +112,28 @@ class IotDevice:
                     temp_c, temp_a = self.temperature.get()
                     tempCurrent = temp_a # Reporting average temp
 
-                    reported = {}
+                    telemetry = {}
                     try:
-                        reported[KEY_TEMPERATURE_SETPOINT] = self.desired[KEY_TEMPERATURE_SETPOINT]
+                        telemetry[KEY_TEMPERATURE_SETPOINT] = self.desired[KEY_TEMPERATURE_SETPOINT]
                     except:
                         # No temperature set point
                         pass
-                    reported[KEY_TEMPERATURE_CURRENT] = tempCurrent
-                    if (tempCurrent < TEMP_ALERT_LOW) or (tempCurrent > TEMP_ALERT_HIGH):
-                        self.reported_temp_alert = True
-                    else:
-                        self.reported_temp_alert = False
-                    reported[KEY_TELEMETRY_ALERT] = self.reported_temp_alert
-                    
-                    reported[KEY_TELEMETRY_TIME] = datetime.datetime.now().isoformat()   
+                    telemetry[KEY_TEMPERATURE_CURRENT] = tempCurrent
+
+                    current_alert = self.reported_temp_alert
+                    self.reported_temp_alert = (temp_a < TEMP_ALERT_LOW) or (temp_a > TEMP_ALERT_HIGH)
+                    if current_alert != self.reported_temp_alert:
+                        self.update_reported_state()
+                        
+                    telemetry[KEY_TELEMETRY_ALERT] = self.reported_temp_alert
+                    telemetry[KEY_TELEMETRY_TIME]  = datetime.datetime.now().isoformat()   
                     
                     weather = self.weather.get()
                     if weather is not None:
-                        reported[KEY_OUTDOOR_CONDITIONS] = weather
+                        telemetry[KEY_OUTDOOR_CONDITIONS] = weather
                     
-                    print ( "Send reported: %s" % json.dumps(reported,indent=4) )
-                    self.hub.post_telemetry(reported)
+                    print ( "Send telemetry: %s" % json.dumps(telemetry,indent=4) )
+                    self.hub.post_telemetry(telemetry)
                     
                     sys.stdout.flush()
 

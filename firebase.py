@@ -133,8 +133,8 @@ if __name__ == '__main__':
     test = {}
     test["$version"] = 17
     test["oj"] = {}
-    test["oj"]["a"] = "Anders"
-    test["oj"]["b"] = "Lisper"
+    test["oj"]["a"] = "Foo"
+    test["oj"]["b"] = "Bar"
     
     hub.post_telemetry(test)
     

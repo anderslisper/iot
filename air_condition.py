@@ -30,7 +30,7 @@ class AirCondition:
             self.currentTemp = temp
 
             if temp == LOW_HEAT:
-                ircode = "LOW_HEAT_10"
+                ircode = "LH_HIGH_10"
             else:
                 ircode = "HEAT_HIGH_{}".format(temp)
 
