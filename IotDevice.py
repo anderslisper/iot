@@ -136,7 +136,7 @@ class IotDevice:
         self.lastComm = time.time()
         
     def isTimeForFallback(self):
-        if time.time() - self.lastComm > 60: #*60:
+        if time.time() - self.lastComm > 60*60:
             seconds = (datetime.now() - self.fallbackDateObject).total_seconds()
             #print(str(seconds) + " since fallback")
             if seconds > 0:
@@ -189,7 +189,8 @@ class IotDevice:
                     if self.isTimeForFallback():
                         # Have passed fallback time and has no internet. 
                         # Set default AC temp
-                        self.airCondition.set_temp(self.desired[KEY_FALLBACK_TEMP])
+                        print("Fallback activated @ {}".format(datetime.now()))
+                        self.airCondition.set_temp(int(self.desired[KEY_FALLBACK_TEMP]))
                     
                     sys.stdout.flush()
 

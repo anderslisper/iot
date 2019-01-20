@@ -2,7 +2,7 @@ from device_config import DeviceConfig
 import pyrebase
 import json
 import time
-import datetime
+from datetime import datetime
 import json
 
 class Firebase:
@@ -46,13 +46,13 @@ class Firebase:
 
                 # Pass the user's idToken to the push method
                 results = db.child(self.hub_root, 'telemetry').push(telemetry, user['idToken'])
-                print("FIREBASE: Telemetry stored as hub id: {} @ {}".format(results["name"], datetime.datetime.now()))
+                print("FIREBASE: Telemetry stored as hub id: {} @ {}".format(results["name"], datetime.now()))
                 return True
             except Exception as e:
                 print("FIREBASE: Post operation failed.")
                 print(e)
         else:
-            print("FIREBASE: Not logged in. No telemetry sent. @ {}".format(datetime.datetime.now()))
+            print("FIREBASE: Not logged in. No telemetry sent. @ {}".format(datetime.now()))
         return False
 
     # Read desired state from cloud
@@ -73,7 +73,7 @@ class Firebase:
                 print("FIREBASE: read_desired_state operation failed.")
                 print(e)
         else:
-            print("Not logged in. Device twin not fetched at {}".format(datetime.datetime.now()))
+            print("Not logged in. Device twin not fetched at {}".format(datetime.now()))
 
         if new_state != self.desired_state and new_state != None:
             self.desired_state = new_state
@@ -97,7 +97,7 @@ class Firebase:
                 print("FIREBASE: store_twin operation failed.")
                 print(e)
         else:
-            print("FIREBASE: Not logged in. No device twin stored. @ {}".format(datetime.datetime.now()))
+            print("FIREBASE: Not logged in. No device twin stored. @ {}".format(datetime.now()))
 
         return False
 
