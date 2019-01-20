@@ -22,6 +22,7 @@ TEMP_ALERT_HIGH         = 28      # deg C
 # Keys in state and telemetry
 KEY_TELEMETRY_INTERVAL   = "telemetryInterval"
 KEY_FALLBACK_DATE        = "fallbackDate"
+KEY_FALLBACK_TEMP        = "fallbackTemp"
 KEY_TEMPERATURE_SETPOINT = "tempSetPoint"
 KEY_TEMPERATURE_CURRENT  = "tempCurrent"
 KEY_TELEMETRY_ALERT      = "tempAlert"
@@ -50,7 +51,8 @@ class IotDevice:
             self.desired = { 
                 KEY_TELEMETRY_INTERVAL:   DEFAULT_TELEMETRY,
                 KEY_TEMPERATURE_SETPOINT: DEFAULT_TEMP,
-                KEY_FALLBACK_DATE:        "2025-01-01"
+                KEY_FALLBACK_DATE:        "2025-01-01",
+                KEY_FALLBACK_TEMP:        "21"
             }
 
         try:
@@ -134,7 +136,7 @@ class IotDevice:
         self.lastComm = time.time()
         
     def isTimeForFallback(self):
-        if time.time() - self.lastComm > 60*60:
+        if time.time() - self.lastComm > 60: #*60:
             seconds = (datetime.now() - self.fallbackDateObject).total_seconds()
             #print(str(seconds) + " since fallback")
             if seconds > 0:
@@ -187,7 +189,7 @@ class IotDevice:
                     if self.isTimeForFallback():
                         # Have passed fallback time and has no internet. 
                         # Set default AC temp
-                        self.airCondition.set_temp(21)
+                        self.airCondition.set_temp(self.desired[KEY_FALLBACK_TEMP])
                     
                     sys.stdout.flush()
 
