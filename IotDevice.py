@@ -3,9 +3,10 @@
 from iotversion import *
 
 import time
-import datetime
 import sys
 import json
+from datetime import datetime
+
 from device_config import DeviceConfig
 from temp_reader   import Temperature
 from air_condition import AirCondition
@@ -20,6 +21,7 @@ TEMP_ALERT_HIGH         = 28      # deg C
 
 # Keys in state and telemetry
 KEY_TELEMETRY_INTERVAL   = "telemetryInterval"
+KEY_FALLBACK_DATE        = "fallbackDate"
 KEY_TEMPERATURE_SETPOINT = "tempSetPoint"
 KEY_TEMPERATURE_CURRENT  = "tempCurrent"
 KEY_TELEMETRY_ALERT      = "tempAlert"
@@ -37,12 +39,26 @@ class IotDevice:
         self.new_interval_set    = False
         self.reported_temp_alert = False
         self.got_twin_state_after_boot = False
+        self.lastComm = time.time()
+        self.fallback_executed = False
 
-        self.desired = { 
-            KEY_TELEMETRY_INTERVAL:   DEFAULT_TELEMETRY,
-            KEY_TEMPERATURE_SETPOINT: DEFAULT_TEMP,
-        }
+        try:
+            with open('desired_state.json', 'r') as f:
+                self.desired = data = json.load(f)                
+        except Exception as e:
+            print("Expection while reading saved desired state: " + str(e))
+            self.desired = { 
+                KEY_TELEMETRY_INTERVAL:   DEFAULT_TELEMETRY,
+                KEY_TEMPERATURE_SETPOINT: DEFAULT_TEMP,
+                KEY_FALLBACK_DATE:        "2025-01-01"
+            }
 
+        try:
+            self.fallbackDateObject = datetime.strptime(self.desired[KEY_FALLBACK_DATE], "%Y-%m-%d")
+        except:
+            self.fallbackDateObject = datetime.strptime("2025-01-01", "%Y-%m-%d")
+            print("Fallback date format not YY-MM-DD " + self.desired[KEY_FALLBACK_DATE])
+            
         self.weather      = Weather()
         self.airCondition = AirCondition(device_config)
         self.temperature  = Temperature(device_config)
@@ -62,19 +78,28 @@ class IotDevice:
         self.desired[KEY_TEMPERATURE_SETPOINT] = self.airCondition.validate_temp(self.desired[KEY_TEMPERATURE_SETPOINT])
         print ( "New desired state received: %s" % json.dumps(self.desired, indent=4) )
         try:
+            # Save new state to disk (to be read at boot)
+            with open('desired_state.json', 'w') as f:
+                json.dump(self.desired, f)                
             # Report new state to HUB
             self.update_reported_state()
             # Set AC temp
             self.airCondition.set_temp(self.desired[KEY_TEMPERATURE_SETPOINT])
+            try:
+                self.fallbackDateObject = datetime.strptime(self.desired[KEY_FALLBACK_DATE], "%Y-%m-%d")
+            except:
+                self.fallbackDateObject = datetime.strptime("2025-01-01", "%Y-%m-%d")
+                print("Fallback date format not YY-MM-DD " + self.desired[KEY_FALLBACK_DATE])
         except Exception as e:
             print(e)
         self.new_interval_set = True
+        self.fallback_executed = False
 
     # Send current state to HUB
     def update_reported_state(self):
         reported = {}
         reported[KEY_SW]              = SOFTWARE_DICT
-        reported[KEY_UPDATE_TIME]     = datetime.datetime.now().isoformat()
+        reported[KEY_UPDATE_TIME]     = datetime.now().isoformat()
         reported[KEY_TELEMETRY_ALERT] = self.reported_temp_alert
         for key in [KEY_LOCATION, KEY_TELEMETRY_INTERVAL, KEY_TEMPERATURE_SETPOINT]:
             try:
@@ -82,7 +107,9 @@ class IotDevice:
             except KeyError:
                 print("State set from HUB lack key '%s'" % key)
         # Report new state to HUB
-        self.hub.update_reported_state(reported)
+        sent = self.hub.update_reported_state(reported)
+        if sent:
+            self.reportSuccessfulCommunication()
     
     # Sleep for t seconds while every <device_config.temp_sampling> seconds...
     # - checking for temp alerts
@@ -103,12 +130,32 @@ class IotDevice:
                 self.new_interval_set = False
                 break
 
+    def reportSuccessfulCommunication(self):
+        self.lastComm = time.time()
+        
+    def isTimeForFallback(self):
+        if time.time() - self.lastComm > 60*60:
+            seconds = (datetime.now() - self.fallbackDateObject).total_seconds()
+            #print(str(seconds) + " since fallback")
+            if seconds > 0:
+                # Passing into fallback date
+                if not self.fallback_executed:
+                    #print("Return true")
+                    self.fallback_executed = True
+                    return True
+        else:
+            #print("internet is still alive")
+            pass
+
+        return False
+        
     # Main loop
     def main_loop(self):
         print ( "Starting IoT Device with ID '{}'".format(self.device_config.deviceid) )
+        self.hub.kick()
         try:
             while True:
-                if self.got_twin_state_after_boot:
+                if self.got_twin_state_after_boot or True:
                     temp_c, temp_a = self.temperature.get()
                     tempCurrent = temp_a # Reporting average temp
 
@@ -126,14 +173,21 @@ class IotDevice:
                         self.update_reported_state()
                         
                     telemetry[KEY_TELEMETRY_ALERT] = self.reported_temp_alert
-                    telemetry[KEY_TELEMETRY_TIME]  = datetime.datetime.now().isoformat()   
+                    telemetry[KEY_TELEMETRY_TIME]  = datetime.now().isoformat()   
                     
                     weather = self.weather.get()
                     if weather is not None:
                         telemetry[KEY_OUTDOOR_CONDITIONS] = weather
                     
-                    print ( "Send telemetry: %s" % json.dumps(telemetry,indent=4) )
-                    self.hub.post_telemetry(telemetry)
+                    #print ( "Send telemetry: %s" % json.dumps(telemetry,indent=4) )
+                    sent = self.hub.post_telemetry(telemetry)
+                    if sent:
+                        self.reportSuccessfulCommunication()                        
+                    
+                    if self.isTimeForFallback():
+                        # Have passed fallback time and has no internet. 
+                        # Set default AC temp
+                        self.airCondition.set_temp(21)
                     
                     sys.stdout.flush()
 

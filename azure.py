@@ -50,16 +50,20 @@ class Azure:
                                                len(reported_state), 
                                                send_reported_state_callback, 
                                                SEND_REPORTED_STATE_CONTEXT)
+            return True
         except IoTHubError as iothub_error:
             print ( "AZURE: Unexpected error from IoTHub when reporting state: %s" % iothub_error )
+        return False
         
     # Post telemetry to cloud
     def post_telemetry(self, telemetry):
         try:
             message = IoTHubMessage(json.dumps(telemetry))
             self.hubClient.send_event_async(message, send_confirmation_callback, None)
+            return True
         except IoTHubError as iothub_error:
             print ( "AZURE: Unexpected error from IoTHub when posting telemetry: %s" % iothub_error )
+        return False
     
     # Keep cloud connection open (not needed for azure)
     def kick(self):

@@ -24,8 +24,8 @@ class Firebase:
 
     # Keep cloud connection open
     def kick(self):
-        #print("FIREBASE: kick")
         elapsed = time.monotonic() - self.token_renewal_time
+        #print("FIREBASE: kick " + str(elapsed))
         if elapsed > self.FIREBASE_DEVICE_TWIN_POLL_TIME:
             self.read_state() # Implicit refresh_token
 
@@ -46,12 +46,14 @@ class Firebase:
 
                 # Pass the user's idToken to the push method
                 results = db.child(self.hub_root, 'telemetry').push(telemetry, user['idToken'])
-                print("FIREBASE: Telemetry stored as hub id: {}".format(results["name"]))
+                print("FIREBASE: Telemetry stored as hub id: {} @ {}".format(results["name"], datetime.datetime.now()))
+                return True
             except Exception as e:
                 print("FIREBASE: Post operation failed.")
                 print(e)
         else:
             print("FIREBASE: Not logged in. No telemetry sent. @ {}".format(datetime.datetime.now()))
+        return False
 
     # Read desired state from cloud
     def read_state(self, bank='desired'):
@@ -66,7 +68,7 @@ class Firebase:
                 db = self.hub.database()
 
                 new_state = dict(db.child(self.hub_root,'device_twin', bank).get(token=user['idToken']).val())
-                #print(device_twin)
+                #print(new_state)
             except Exception as e:
                 print("FIREBASE: read_desired_state operation failed.")
                 print(e)
@@ -90,13 +92,14 @@ class Firebase:
                 db = self.hub.database()
 
                 db.child(self.hub_root, 'device_twin', bank).set(device_twin, user['idToken'])
+                return True
             except Exception as e:
                 print("FIREBASE: store_twin operation failed.")
                 print(e)
         else:
             print("FIREBASE: Not logged in. No device twin stored. @ {}".format(datetime.datetime.now()))
 
-        return device_twin
+        return False
 
     # Login to Firebase
     def login(self):
