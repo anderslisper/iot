@@ -102,3 +102,12 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+#Files with secrets
+azure.json
+weather.json
+firebase.json
+device_config.json
+
+#Temp files
+desired_state.json
