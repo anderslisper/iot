@@ -1,2 +1,2 @@
 # iot
-Iot python project for Firebase or Azure
+IoT Python 3.x project for Firebase or Azure
