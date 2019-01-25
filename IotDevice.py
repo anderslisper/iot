@@ -14,10 +14,9 @@ from weather       import Weather
 from firebase      import Firebase
 from azure         import Azure
 
-DEFAULT_TELEMETRY       = 20*60   # 20 min
-DEFAULT_TEMP            = 21      # deg C
-TEMP_ALERT_LOW          = 7       # deg C
-TEMP_ALERT_HIGH         = 28      # deg C
+# When to report temp alerts
+TEMP_ALERT_LOW  = 7
+TEMP_ALERT_HIGH = 28
 
 # Keys in state and telemetry
 KEY_TELEMETRY_INTERVAL   = "telemetryInterval"
@@ -33,10 +32,17 @@ KEY_SW                   = "software"
 KEY_SW_VERSION           = "version"
 KEY_SW_DATE              = "date"
 
+# These values are used as default if keys are lacking
+DESIRED_STATE_TEMPLATE = { 
+    KEY_TELEMETRY_INTERVAL:   20*60,   # 20 min
+    KEY_TEMPERATURE_SETPOINT: 21,
+    KEY_FALLBACK_DATE:        "2025-01-01",
+    KEY_FALLBACK_TEMP:        21
+}
+
 class IotDevice:
     def __init__(self, device_config):
         self.device_config = device_config
-        self.new_interval_set    = False
         self.reported_temp_alert = False
         self.lastComm = time.time()
         self.fallback_executed = False
@@ -46,12 +52,7 @@ class IotDevice:
                 self.desired = data = json.load(f)                
         except Exception as e:
             print("Expection while reading saved desired state: " + str(e))
-            self.desired = { 
-                KEY_TELEMETRY_INTERVAL:   DEFAULT_TELEMETRY,
-                KEY_TEMPERATURE_SETPOINT: DEFAULT_TEMP,
-                KEY_FALLBACK_DATE:        "2025-01-01",
-                KEY_FALLBACK_TEMP:        "21"
-            }
+            self.wash_desired()
 
         try:
             self.fallbackDateObject = datetime.strptime(self.desired[KEY_FALLBACK_DATE], "%Y-%m-%d")
@@ -70,16 +71,26 @@ class IotDevice:
         else:
             raise Exception("Supported cloud services are 'azure' and 'firebase'. Update 'device_config.json'.")
 
+    def wash_desired(self):
+        for key, val in DESIRED_STATE_TEMPLATE.items():
+            if key not in self.desired:
+                self.desired[key] = val
+        self.desired[KEY_TEMPERATURE_SETPOINT] = self.airCondition.validate_temp(self.desired[KEY_TEMPERATURE_SETPOINT])
+        self.desired[KEY_TELEMETRY_INTERVAL] = min(30, self.desired[KEY_TELEMETRY_INTERVAL])
+        self.desired[KEY_TELEMETRY_INTERVAL] = max(3600, self.desired[KEY_TELEMETRY_INTERVAL])
+        
     # Callback when the device twin stored in cloud has been updated
     def device_twin_update(self, desired, fallback=False):
         self.desired = desired
-        self.desired[KEY_TEMPERATURE_SETPOINT] = self.airCondition.validate_temp(self.desired[KEY_TEMPERATURE_SETPOINT])
+        self.wash_desired()
         if not fallback:
             print ( "New desired state received: %s" % json.dumps(self.desired, indent=4) )
         try:
             # Save new state to disk (to be read at boot)
             with open('desired_state.json', 'w') as f:
                 json.dump(self.desired, f)                
+            # Set new filter time
+            self.temperature.set_filter_time(self.desired[KEY_TELEMETRY_INTERVAL])
             # Report new state to HUB
             self.update_reported_state()
             # Set AC temp
@@ -91,7 +102,6 @@ class IotDevice:
                 print("Fallback date format not YY-MM-DD " + self.desired[KEY_FALLBACK_DATE])
         except Exception as e:
             print(e)
-        self.new_interval_set = True
         self.fallback_executed = False
 
     # Send current state to HUB
@@ -110,23 +120,27 @@ class IotDevice:
         if sent:
             self.reportSuccessfulCommunication()
     
+    def get_temp_alert(self, temp):
+        low_limit = TEMP_ALERT_LOW
+        high_limit = TEMP_ALERT_HIGH
+        if self.reported_temp_alert: # 0.5 degrees hysteresis
+            low_limit += 0.5
+            high_limit -= 0.5
+        alert = (temp < low_limit) or (temp > high_limit)
+        return alert
+
     # Sleep for t seconds while every <device_config.temp_sampling> seconds...
     # - checking for temp alerts
     # - kicking hub connection
     # - checking if telemetryInterval has been updated
-    def my_sleep(self, t):
-        if t is None:
-            t = 60
-        expire = time.monotonic() + (t-2)
-        while (time.monotonic() < expire):
+    def telemetry_sleep(self):
+        started_at = time.monotonic() - 2
+        while (time.monotonic() < (started_at + self.desired[KEY_TELEMETRY_INTERVAL])):
             self.hub.kick()
             time.sleep(device_config.temp_sampling)
             temp_c, temp_a = self.temperature.get()
-            alert = (temp_a < TEMP_ALERT_LOW) or (temp_a > TEMP_ALERT_HIGH)
+            alert = self.get_temp_alert(temp_a)
             if alert != self.reported_temp_alert:
-                break
-            if self.new_interval_set:
-                self.new_interval_set = False
                 break
 
     def reportSuccessfulCommunication(self):
@@ -163,7 +177,7 @@ class IotDevice:
                 telemetry[KEY_TEMPERATURE_CURRENT] = tempCurrent
 
                 current_alert = self.reported_temp_alert
-                self.reported_temp_alert = (temp_a < TEMP_ALERT_LOW) or (temp_a > TEMP_ALERT_HIGH)
+                self.reported_temp_alert = self.get_temp_alert(temp_a)
                 if current_alert != self.reported_temp_alert:
                     self.update_reported_state()
                     
@@ -190,7 +204,7 @@ class IotDevice:
                 sys.stdout.flush()
 
                 try:
-                    self.my_sleep(self.desired[KEY_TELEMETRY_INTERVAL])
+                    self.telemetry_sleep()
                 except Exception as e:
                     print("Device '{}' has no configured device twin defined".format(self.device_config.deviceid))
                     if device_config.cloud == "firebase":

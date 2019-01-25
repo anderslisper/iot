@@ -15,24 +15,27 @@ class Firebase:
         self.deviceid = device_config.deviceid
         self.hub = pyrebase.initialize_app(self.config['db_config'])
         self.FIREBASE_DEVICE_TWIN_POLL_TIME = 5*60 # 5 min. Tradeoff between resource util and response time when changing set temperature
-        if self.FIREBASE_DEVICE_TWIN_POLL_TIME > 55*60:
-            # Token refresh time is 1h. We should keep it alive by checking device twin at least once every 55 mins
-            raise Exception("FIREBASE: Device twin poll time must be less than 55min")
-        self.token_renewal_time = -10000
+        self.FIREBASE_TOKEN_REFRESH_TIME   = 40*60 # 40 min. Should be less than an hour 
+        self.token_renewal_time    = -10000
+        self.device_twin_poll_time = -10000
         self.desired_state = None
         self.login()
 
     # Keep cloud connection open
     def kick(self):
-        elapsed = time.monotonic() - self.token_renewal_time
+        elapsed = time.monotonic() - self.device_twin_poll_time
         #print("FIREBASE: kick " + str(elapsed))
         if elapsed > self.FIREBASE_DEVICE_TWIN_POLL_TIME:
-            self.read_state() # Implicit refresh_token
+            self.read_state()
+
+        elapsed = time.monotonic() - self.token_renewal_time
+        if elapsed > self.FIREBASE_TOKEN_REFRESH_TIME:
+            self.refresh_token()
 
     # Post telemetry to cloud
     def post_telemetry(self, telemetry):
         #print("FIREBASE: post_telemetry")
-        self.refresh_token()
+        self.read_state()
         user = self.user
         
         if user is not None:
@@ -59,6 +62,8 @@ class Firebase:
     def read_state(self, bank='desired'):
         #print("FIREBASE: read_state")
         self.refresh_token()
+        self.device_twin_poll_time = time.monotonic()    
+
         user = self.user
         new_state = None
         

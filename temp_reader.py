@@ -3,14 +3,16 @@ import glob
 import time
 import random
 import platform
+from datetime import datetime
 from device_config import DeviceConfig
 
 # Read a DS1820 temp sensor
 class Temperature:
 
     def __init__(self, device_config):
-        self.temp_readings = []
-        self.AVERAGE_INTERVAL = device_config.temp_average
+        self.temp_readings = [21]
+        self.AVERAGE_INTERVAL = 120 #device_config.temp_average
+        self.temp_sampling = device_config.temp_sampling
         if device_config.is_simulated:
             self.hardware = False
         else:
@@ -25,6 +27,15 @@ class Temperature:
                 self.hardware = False
                 print("No temp sensor found. Simulating temp readings")
 
+    def set_filter_time(self, filter_time):
+        try:
+            self.AVERAGE_INTERVAL = int(filter_time / self.temp_sampling)
+        except Exception as e:
+            print(e)
+            self.AVERAGE_INTERVAL = 120
+        if len(self.temp_readings) > self.AVERAGE_INTERVAL:
+            del self.temp_readings[self.AVERAGE_INTERVAL:]
+            
     # Read DS1820 output
     def read_temp_raw(self):
         lines = ""
@@ -38,14 +49,23 @@ class Temperature:
         if self.hardware:
             lines = self.read_temp_raw()
 
+            i = 50
             while lines[0].strip()[-3:] != 'YES':
                 time.sleep(0.2)
                 lines = self.read_temp_raw()
+                i -= 1
+                if i == 0:
+                    break
 
-            equals_pos = lines[1].find('t=')
-            if equals_pos != -1:
-                temp_string = lines[1][equals_pos+2:]
-                temp_c = float(temp_string) / 1000.0
+            if i > 0:
+                equals_pos = lines[1].find('t=')
+                if equals_pos != -1:
+                    temp_string = lines[1][equals_pos+2:]
+                    temp_c = float(temp_string) / 1000.0
+            else:
+                print("Could not read temperature @ {}".format(datetime.now()))
+                temp_c = self.temp_readings[-1]
+
         else:
             # Simulating a temp around 21 deg C
             temp_c = 21 + (random.random() * 3) - 1.5
