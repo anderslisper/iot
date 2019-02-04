@@ -76,8 +76,8 @@ class IotDevice:
             if key not in self.desired:
                 self.desired[key] = val
         self.desired[KEY_TEMPERATURE_SETPOINT] = self.airCondition.validate_temp(self.desired[KEY_TEMPERATURE_SETPOINT])
-        self.desired[KEY_TELEMETRY_INTERVAL] = min(30, self.desired[KEY_TELEMETRY_INTERVAL])
-        self.desired[KEY_TELEMETRY_INTERVAL] = max(3600, self.desired[KEY_TELEMETRY_INTERVAL])
+        self.desired[KEY_TELEMETRY_INTERVAL] = max(30, self.desired[KEY_TELEMETRY_INTERVAL])
+        self.desired[KEY_TELEMETRY_INTERVAL] = min(3600, self.desired[KEY_TELEMETRY_INTERVAL])
         
     # Callback when the device twin stored in cloud has been updated
     def device_twin_update(self, desired, fallback=False):
