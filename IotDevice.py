@@ -4,6 +4,7 @@ from iotversion import *
 
 import time
 import sys
+import os
 import json
 from datetime import datetime
 
@@ -22,6 +23,8 @@ TEMP_ALERT_HIGH = 28
 KEY_TELEMETRY_INTERVAL   = "telemetryInterval"
 KEY_FALLBACK_DATE        = "fallbackDate"
 KEY_FALLBACK_TEMP        = "fallbackTemp"
+KEY_REBOOT_ORDER_TIME    = "reboot"
+KEY_BOOT_TIME            = "bootTime"
 KEY_TEMPERATURE_SETPOINT = "tempSetPoint"
 KEY_TEMPERATURE_CURRENT  = "tempCurrent"
 KEY_TELEMETRY_ALERT      = "tempAlert"
@@ -37,7 +40,8 @@ DESIRED_STATE_TEMPLATE = {
     KEY_TELEMETRY_INTERVAL:   20*60,   # 20 min
     KEY_TEMPERATURE_SETPOINT: 21,
     KEY_FALLBACK_DATE:        "2025-01-01",
-    KEY_FALLBACK_TEMP:        21
+    KEY_FALLBACK_TEMP:        21,
+    KEY_REBOOT_ORDER_TIME:    ""
 }
 
 class IotDevice:
@@ -46,20 +50,8 @@ class IotDevice:
         self.reported_temp_alert = False
         self.lastComm = time.time()
         self.fallback_executed = False
+        self.boot_time = datetime.now().isoformat()
 
-        try:
-            with open('desired_state.json', 'r') as f:
-                self.desired = data = json.load(f)                
-        except Exception as e:
-            print("Expection while reading saved desired state: " + str(e))
-            self.wash_desired()
-
-        try:
-            self.fallbackDateObject = datetime.strptime(self.desired[KEY_FALLBACK_DATE], "%Y-%m-%d")
-        except:
-            self.fallbackDateObject = datetime.strptime("2025-01-01", "%Y-%m-%d")
-            print("Fallback date format not YY-MM-DD " + self.desired[KEY_FALLBACK_DATE])
-            
         self.weather      = Weather()
         self.airCondition = AirCondition(device_config)
         self.temperature  = Temperature(device_config)
@@ -71,6 +63,19 @@ class IotDevice:
         else:
             raise Exception("Supported cloud services are 'azure' and 'firebase'. Update 'device_config.json'.")
 
+        try:
+            with open('desired_state.json', 'r') as f:
+                self.desired = json.load(f)                
+        except Exception as e:
+            print("Expection while reading saved desired state: " + str(e))
+        self.wash_desired()
+
+        try:
+            self.fallbackDateObject = datetime.strptime(self.desired[KEY_FALLBACK_DATE], "%Y-%m-%d")
+        except:
+            self.fallbackDateObject = datetime.strptime("2025-01-01", "%Y-%m-%d")
+            print("Fallback date format not YY-MM-DD " + self.desired[KEY_FALLBACK_DATE])
+            
     def wash_desired(self):
         for key, val in DESIRED_STATE_TEMPLATE.items():
             if key not in self.desired:
@@ -81,8 +86,13 @@ class IotDevice:
         
     # Callback when the device twin stored in cloud has been updated
     def device_twin_update(self, desired, fallback=False):
+        rebootOrderTime = self.desired[KEY_REBOOT_ORDER_TIME]
+        
         self.desired = desired
         self.wash_desired()
+
+        reboot = (desired[KEY_REBOOT_ORDER_TIME] != rebootOrderTime)
+
         if not fallback:
             print ( "New desired state received: %s" % json.dumps(self.desired, indent=4) )
         try:
@@ -103,14 +113,19 @@ class IotDevice:
         except Exception as e:
             print(e)
         self.fallback_executed = False
+        if reboot:
+            # Order reboot from "rebooter.sh"
+            print("Reboot was ordered @ {}".format(self.desired[KEY_REBOOT_ORDER_TIME]))
+            os.system('touch reboot.now')
 
     # Send current state to HUB
     def update_reported_state(self):
         reported = {}
         reported[KEY_SW]              = SOFTWARE_DICT
         reported[KEY_UPDATE_TIME]     = datetime.now().isoformat()
+        reported[KEY_BOOT_TIME]       = self.boot_time
         reported[KEY_TELEMETRY_ALERT] = self.reported_temp_alert
-        for key in [KEY_TELEMETRY_INTERVAL, KEY_TEMPERATURE_SETPOINT]:
+        for key in [KEY_TELEMETRY_INTERVAL, KEY_TEMPERATURE_SETPOINT, KEY_REBOOT_ORDER_TIME]:
             try:
                 reported[key] = self.desired[key]
             except KeyError:
