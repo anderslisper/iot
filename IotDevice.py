@@ -240,7 +240,7 @@ class IotDevice:
 # Main program
 device_config = DeviceConfig()
 if device_config.logfile is not None:
-    sys.stdout = open(device_config.logfile, "w")
+    sys.stdout = open(device_config.logfile, "a")
 iotDevice = IotDevice(device_config)
 iotDevice.main_loop()
     
