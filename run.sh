@@ -6,6 +6,9 @@ mv -f log.tmp iot_log.txt
 
 echo "STARTING APPLICATION" >> iot_log.txt
 
+# Wait for startup
+sleep 120
+
 # Get latest 
 git pull >> iot_log.txt
 
