@@ -23,19 +23,31 @@ class FirebaseRebooter:
             print("Reboot state fetch failed. Retrying in 10s")
             time.sleep(10)
             org_state = self.read_reboot()
-            
+        
+		storage = self.hub.storage()
+
+		storage.child("iot_log.txt").put("iot_log.txt", self.user['idToken'])
+		url = storage.child("iot_log.txt").get_url(self.user['idToken'])
+		print("iot_log.txt URL: " + str(url))
+
+		storage.child("rebooter_log.txt").put("rebooter_log.txt", self.user['idToken'])
+		url = storage.child("rebooter_log.txt").get_url(self.user['idToken'])
+		print("rebooter_log.txt URL: " + str(url))
+
+		fail_counter = 0
         while True:
             time.sleep(10)
             state = self.read_reboot()
             if state == None:
                 state = org_state
+				fail_counter += 1
+				if fail_counter > 10:
+					break
+			else:
+				fail_counter = 0
+				
             #print("Org: " + org_state + ", new:" + state)
             if state != org_state:
-                storage = self.hub.storage()
-                # as user
-                storage.child("iot_log.txt").put("iot_log.txt", self.user['idToken'])
-                url = storage.child("iot_log.txt").get_url(self.user['idToken'])
-                print("URL: " + str(url))
                 break
     
     # Read reboot order from cloud

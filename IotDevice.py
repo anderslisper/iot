@@ -138,9 +138,9 @@ class IotDevice:
     def get_temp_alert(self, temp):
         low_limit = TEMP_ALERT_LOW
         high_limit = TEMP_ALERT_HIGH
-        if self.reported_temp_alert: # 0.5 degrees hysteresis
-            low_limit += 0.5
-            high_limit -= 0.5
+        if self.reported_temp_alert: # 1 degrees hysteresis
+            low_limit += 1
+            high_limit -= 1
         alert = (temp < low_limit) or (temp > high_limit)
         return alert
 
@@ -153,8 +153,8 @@ class IotDevice:
         while (time.monotonic() < (started_at + self.desired[KEY_TELEMETRY_INTERVAL])):
             self.hub.kick()
             time.sleep(device_config.temp_sampling)
-            temp_c, temp_a = self.temperature.get()
-            alert = self.get_temp_alert(temp_a)
+            temp_c, temp_m = self.temperature.get()
+            alert = self.get_temp_alert(temp_m)
             if alert != self.reported_temp_alert:
                 break
 
@@ -180,8 +180,8 @@ class IotDevice:
         self.hub.kick()
         while True:
             try:
-                temp_c, temp_a = self.temperature.get()
-                tempCurrent = temp_a # Reporting average temp
+                temp_c, temp_m = self.temperature.get()
+                tempCurrent = temp_m # Reporting min temp
 
                 telemetry = {}
                 try:
@@ -192,7 +192,7 @@ class IotDevice:
                 telemetry[KEY_TEMPERATURE_CURRENT] = tempCurrent
 
                 current_alert = self.reported_temp_alert
-                self.reported_temp_alert = self.get_temp_alert(temp_a)
+                self.reported_temp_alert = self.get_temp_alert(temp_m)
                 if current_alert != self.reported_temp_alert:
                     self.update_reported_state()
                     

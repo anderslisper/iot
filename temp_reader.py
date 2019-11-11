@@ -73,20 +73,22 @@ class Temperature:
         self.temp_readings.append(temp_c)
         if len(self.temp_readings) > self.AVERAGE_INTERVAL:
             self.temp_readings = self.temp_readings[1:]
-        temp_a = sum(self.temp_readings)/float(len(self.temp_readings))
 
-        #print(len(self.temp_readings))
+        temp_readings_sorted = sorted(self.temp_readings)
+        temp_m = temp_readings_sorted[0]
+        if len(temp_readings_sorted) > 3:
+            temp_m = temp_readings_sorted[3]
         
         temp_c = round(temp_c, 1)
-        temp_a = round(temp_a, 1)
+        temp_m = round(temp_m, 1)
 
-        return temp_c, temp_a
+        return temp_c, temp_m
 
 if __name__ == '__main__':
     device_config = DeviceConfig()
     reader = Temperature(device_config)
     for i in range(100):
-        temp_c, temp_a = reader.get()
-        print("read: {}, aver: {}".format(temp_c, temp_a))
+        temp_c, temp_m = reader.get()
+        print("read: {}, min: {}".format(temp_c, temp_m))
         time.sleep(0.1)
 	
