@@ -6,6 +6,7 @@ import time
 import sys
 import os
 import json
+import socket    
 from datetime import datetime
 
 from device_config import DeviceConfig
@@ -23,7 +24,6 @@ TEMP_ALERT_HIGH = 28
 KEY_TELEMETRY_INTERVAL   = "telemetryInterval"
 KEY_FALLBACK_DATE        = "fallbackDate"
 KEY_FALLBACK_TEMP        = "fallbackTemp"
-KEY_REBOOT_ORDER_TIME    = "reboot"
 KEY_BOOT_TIME            = "bootTime"
 KEY_TEMPERATURE_SETPOINT = "tempSetPoint"
 KEY_TEMPERATURE_CURRENT  = "tempCurrent"
@@ -34,6 +34,7 @@ KEY_UPDATE_TIME          = "updateTime"
 KEY_SW                   = "software"
 KEY_SW_VERSION           = "version"
 KEY_SW_DATE              = "date"
+KEY_IP_ADDRESS           = "ipAddress"
 
 # These values are used as default if keys are lacking
 DESIRED_STATE_TEMPLATE = { 
@@ -41,7 +42,6 @@ DESIRED_STATE_TEMPLATE = {
     KEY_TEMPERATURE_SETPOINT: 21,
     KEY_FALLBACK_DATE:        "2025-01-01",
     KEY_FALLBACK_TEMP:        21,
-    KEY_REBOOT_ORDER_TIME:    ""
 }
 
 class IotDevice:
@@ -51,6 +51,7 @@ class IotDevice:
         self.lastComm = time.time()
         self.fallback_executed = False
         self.boot_time = datetime.now().isoformat()
+		self.ip_address = self.getIpAddress()
 
         self.weather      = Weather()
         self.airCondition = AirCondition(device_config)
@@ -86,12 +87,8 @@ class IotDevice:
         
     # Callback when the device twin stored in cloud has been updated
     def device_twin_update(self, desired, fallback=False):
-        rebootOrderTime = self.desired[KEY_REBOOT_ORDER_TIME]
-        
         self.desired = desired
         self.wash_desired()
-
-        reboot = (desired[KEY_REBOOT_ORDER_TIME] != rebootOrderTime)
 
         if not fallback:
             print ( "New desired state received: %s" % json.dumps(self.desired, indent=4) )
@@ -113,10 +110,6 @@ class IotDevice:
         except Exception as e:
             print(e)
         self.fallback_executed = False
-        if reboot:
-            # Order reboot from "rebooter.sh"
-            print("Reboot was ordered @ {}".format(self.desired[KEY_REBOOT_ORDER_TIME]))
-            os.system('touch reboot.now')
 
     # Send current state to HUB
     def update_reported_state(self):
@@ -125,7 +118,8 @@ class IotDevice:
         reported[KEY_UPDATE_TIME]     = datetime.now().isoformat()
         reported[KEY_BOOT_TIME]       = self.boot_time
         reported[KEY_TELEMETRY_ALERT] = self.reported_temp_alert
-        for key in [KEY_TELEMETRY_INTERVAL, KEY_TEMPERATURE_SETPOINT, KEY_REBOOT_ORDER_TIME]:
+		reported[KEY_IP_ADDRESS]      = self.ip_address
+        for key in [KEY_TELEMETRY_INTERVAL, KEY_TEMPERATURE_SETPOINT]:
             try:
                 reported[key] = self.desired[key]
             except KeyError:
@@ -174,6 +168,11 @@ class IotDevice:
 
         return False
         
+	def getIpAddress(self):
+		hostname = socket.gethostname()    
+		IPAddr = socket.gethostbyname(hostname)    
+		return IPAddr
+
     # Main loop
     def main_loop(self):
         print ( "Starting IoT Device with ID '{}'".format(self.device_config.deviceid) )

@@ -42,13 +42,13 @@ class FirebaseRebooter:
                 state = org_state
 				fail_counter += 1
 				if fail_counter > 10:
-					break
+					break # reboot
 			else:
 				fail_counter = 0
 				
             #print("Org: " + org_state + ", new:" + state)
             if state != org_state:
-                break
+                break # reboot
     
     # Read reboot order from cloud
     def read_reboot(self):
