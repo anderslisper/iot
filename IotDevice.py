@@ -51,7 +51,7 @@ class IotDevice:
         self.lastComm = time.time()
         self.fallback_executed = False
         self.boot_time = datetime.now().isoformat()
-		self.ip_address = self.getIpAddress()
+        self.ip_address = self.getIpAddress()
 
         self.weather      = Weather()
         self.airCondition = AirCondition(device_config)
@@ -118,7 +118,7 @@ class IotDevice:
         reported[KEY_UPDATE_TIME]     = datetime.now().isoformat()
         reported[KEY_BOOT_TIME]       = self.boot_time
         reported[KEY_TELEMETRY_ALERT] = self.reported_temp_alert
-		reported[KEY_IP_ADDRESS]      = self.ip_address
+        reported[KEY_IP_ADDRESS]      = self.ip_address
         for key in [KEY_TELEMETRY_INTERVAL, KEY_TEMPERATURE_SETPOINT]:
             try:
                 reported[key] = self.desired[key]
@@ -168,10 +168,10 @@ class IotDevice:
 
         return False
         
-	def getIpAddress(self):
-		hostname = socket.gethostname()    
-		IPAddr = socket.gethostbyname(hostname)    
-		return IPAddr
+    def getIpAddress(self):
+        hostname = socket.gethostname()    
+        IPAddr = socket.gethostbyname(hostname)    
+        return IPAddr
 
     # Main loop
     def main_loop(self):

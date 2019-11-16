@@ -24,28 +24,28 @@ class FirebaseRebooter:
             time.sleep(10)
             org_state = self.read_reboot()
         
-		storage = self.hub.storage()
+        storage = self.hub.storage()
 
-		storage.child("iot_log.txt").put("iot_log.txt", self.user['idToken'])
-		url = storage.child("iot_log.txt").get_url(self.user['idToken'])
-		print("iot_log.txt URL: " + str(url))
+        storage.child("iot_log.txt").put("iot_log.txt", self.user['idToken'])
+        url = storage.child("iot_log.txt").get_url(self.user['idToken'])
+        print("iot_log.txt URL: " + str(url))
 
-		storage.child("rebooter_log.txt").put("rebooter_log.txt", self.user['idToken'])
-		url = storage.child("rebooter_log.txt").get_url(self.user['idToken'])
-		print("rebooter_log.txt URL: " + str(url))
+        storage.child("rebooter_log.txt").put("rebooter_log.txt", self.user['idToken'])
+        url = storage.child("rebooter_log.txt").get_url(self.user['idToken'])
+        print("rebooter_log.txt URL: " + str(url))
 
-		fail_counter = 0
+        fail_counter = 0
         while True:
             time.sleep(10)
             state = self.read_reboot()
             if state == None:
                 state = org_state
-				fail_counter += 1
-				if fail_counter > 10:
-					break # reboot
-			else:
-				fail_counter = 0
-				
+                fail_counter += 1
+                if fail_counter > 10:
+                    break # reboot
+            else:
+                fail_counter = 0
+                
             #print("Org: " + org_state + ", new:" + state)
             if state != org_state:
                 break # reboot

@@ -91,4 +91,4 @@ if __name__ == '__main__':
         temp_c, temp_m = reader.get()
         print("read: {}, min: {}".format(temp_c, temp_m))
         time.sleep(0.1)
-	
+    
