@@ -1,7 +1,7 @@
 import time
-import datetime
 import requests
 import json
+from common import Common
 
 class Weather:
 
@@ -13,7 +13,7 @@ class Weather:
         self.last_fetched_at = -10000
 
         self.current = {}
-        self.current["fetched_utctime"] = datetime.datetime.now().isoformat() 
+        self.current["fetched_utctime"] = Common.getCurrentUTCTime()
         self.current["temp"]            = 0
         self.current["wind"]            = 0
 
@@ -32,7 +32,7 @@ class Weather:
                 if r.status_code == 200:
                     weather = r.json()
                     self.current = {}
-                    self.current["fetched_utctime"] = datetime.datetime.now().isoformat() 
+                    self.current["fetched_utctime"] = Common.getCurrentUTCTime() 
                     self.current["temp"]            = weather["main"]["temp"]
                     self.current["wind"]            = weather["wind"]["speed"]
                     print("Weather fetched from openweather at {}".format(self.current["fetched_utctime"]))

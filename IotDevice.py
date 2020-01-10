@@ -15,6 +15,7 @@ from air_condition import AirCondition
 from weather       import Weather
 from firebase      import Firebase
 from azure         import Azure
+from common        import Common
 
 # When to report temp alerts
 TEMP_ALERT_LOW  = 7
@@ -50,7 +51,7 @@ class IotDevice:
         self.reported_temp_alert = False
         self.lastComm = time.time()
         self.fallback_executed = False
-        self.boot_time = datetime.now().isoformat()
+        self.boot_time = Common.getCurrentUTCTime()
         self.ip_address = self.getIpAddress()
 
         self.weather      = Weather()
@@ -115,7 +116,7 @@ class IotDevice:
     def update_reported_state(self):
         reported = {}
         reported[KEY_SW]              = SOFTWARE_DICT
-        reported[KEY_UPDATE_TIME]     = datetime.now().isoformat()
+        reported[KEY_UPDATE_TIME]     = Common.getCurrentUTCTime()
         reported[KEY_BOOT_TIME]       = self.boot_time
         reported[KEY_TELEMETRY_ALERT] = self.reported_temp_alert
         reported[KEY_IP_ADDRESS]      = self.ip_address
@@ -203,7 +204,7 @@ class IotDevice:
                     self.update_reported_state()
                     
                 telemetry[KEY_TELEMETRY_ALERT] = self.reported_temp_alert
-                telemetry[KEY_TELEMETRY_TIME]  = datetime.now().isoformat()   
+                telemetry[KEY_TELEMETRY_TIME]  = Common.getCurrentUTCTime()  
                 
                 weather = self.weather.get()
                 if weather is not None:
