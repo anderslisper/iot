@@ -19,4 +19,8 @@ sudo -u anders /usr/bin/python3 firebase_rebooter.py
 echo "REBOOTING" >> rebooter_log.txt
 date >> rebooter_log.txt
 
+# Get latest 
+echo "Pulling from git" >> rebooter_log.txt
+git pull >> rebooter_log.txt
+
 reboot
