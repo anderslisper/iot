@@ -1,21 +1,19 @@
 # Main file
 
-from iotversion import *
-
-import time
-import sys
-import os
 import json
-import socket    
+import socket
+import sys
+import time
 from datetime import datetime
 
-from device_config import DeviceConfig
-from temp_reader   import Temperature
 from air_condition import AirCondition
-from weather       import Weather
-from firebase      import Firebase
-from azure         import Azure
-from common        import Common
+from azure import Azure
+from common import Common
+from device_config import DeviceConfig
+from firebase import Firebase
+from iotversion import *
+from temp_reader import Temperature
+from weather import Weather
 
 # When to report temp alerts
 TEMP_ALERT_LOW  = 7
@@ -25,6 +23,7 @@ TEMP_ALERT_HIGH = 28
 KEY_TELEMETRY_INTERVAL   = "telemetryInterval"
 KEY_FALLBACK_DATE        = "fallbackDate"
 KEY_FALLBACK_TEMP        = "fallbackTemp"
+KEY_FALLBACK_ACTIVATED   = "fallbackActivated"
 KEY_BOOT_TIME            = "bootTime"
 KEY_TEMPERATURE_SETPOINT = "tempSetPoint"
 KEY_TEMPERATURE_CURRENT  = "tempCurrent"
@@ -49,8 +48,7 @@ class IotDevice:
     def __init__(self, device_config):
         self.device_config = device_config
         self.reported_temp_alert = False
-        self.lastComm = time.time()
-        self.fallback_executed = False
+        self.fallback_activated = None
         self.boot_time = Common.getCurrentUTCTime()
         self.ip_address = self.getIpAddress()
 
@@ -72,12 +70,20 @@ class IotDevice:
             print("Expection while reading saved desired state: " + str(e))
         self.wash_desired()
 
+        self.set_fallback_date()
+
+    def set_fallback_date(self):
         try:
             self.fallbackDateObject = datetime.strptime(self.desired[KEY_FALLBACK_DATE], "%Y-%m-%d")
-        except:
-            self.fallbackDateObject = datetime.strptime("2025-01-01", "%Y-%m-%d")
+            update_time = datetime.strptime(self.desired[KEY_UPDATE_TIME], "%Y-%m-%dT%H:%M:%S.%fZ")
+            if self.fallbackDateObject < update_time:
+                # Desired state updated since fallback, so ignore it
+                self.fallbackDateObject = None
+        except Exception as e:
+            print(e.message)
+            self.fallbackDateObject = None
             print("Fallback date format not YY-MM-DD " + self.desired[KEY_FALLBACK_DATE])
-            
+
     def wash_desired(self):
         for key, val in DESIRED_STATE_TEMPLATE.items():
             if key not in self.desired:
@@ -87,12 +93,11 @@ class IotDevice:
         self.desired[KEY_TELEMETRY_INTERVAL] = min(3600, self.desired[KEY_TELEMETRY_INTERVAL])
         
     # Callback when the device twin stored in cloud has been updated
-    def device_twin_update(self, desired, fallback=False):
+    def device_twin_update(self, desired):
         self.desired = desired
         self.wash_desired()
 
-        if not fallback:
-            print ( "New desired state received: %s" % json.dumps(self.desired, indent=4) )
+        print ( "New desired state received: %s" % json.dumps(self.desired, indent=4) )
         try:
             # Save new state to disk (to be read at boot)
             with open('desired_state.json', 'w') as f:
@@ -103,14 +108,10 @@ class IotDevice:
             self.update_reported_state()
             # Set AC temp
             self.airCondition.set_temp(self.desired[KEY_TEMPERATURE_SETPOINT])
-            try:
-                self.fallbackDateObject = datetime.strptime(self.desired[KEY_FALLBACK_DATE], "%Y-%m-%d")
-            except:
-                self.fallbackDateObject = datetime.strptime("2025-01-01", "%Y-%m-%d")
-                print("Fallback date format not YY-MM-DD " + self.desired[KEY_FALLBACK_DATE])
+
+            self.set_fallback_date()
         except Exception as e:
             print(e)
-        self.fallback_executed = False
 
     # Send current state to HUB
     def update_reported_state(self):
@@ -120,6 +121,10 @@ class IotDevice:
         reported[KEY_BOOT_TIME]       = self.boot_time
         reported[KEY_TELEMETRY_ALERT] = self.reported_temp_alert
         reported[KEY_IP_ADDRESS]      = self.ip_address
+        if self.fallbackDateObject is None:
+            reported[KEY_FALLBACK_ACTIVATED] = "Yes"
+        else:
+            reported[KEY_FALLBACK_ACTIVATED] = "No"
         for key in [KEY_TELEMETRY_INTERVAL, KEY_TEMPERATURE_SETPOINT]:
             try:
                 reported[key] = self.desired[key]
@@ -127,8 +132,6 @@ class IotDevice:
                 print("State set from HUB lack key '%s'" % key)
         # Report new state to HUB
         sent = self.hub.update_reported_state(reported)
-        if sent:
-            self.reportSuccessfulCommunication()
     
     def get_temp_alert(self, temp):
         low_limit = TEMP_ALERT_LOW
@@ -153,20 +156,13 @@ class IotDevice:
             if alert != self.reported_temp_alert:
                 break
 
-    def reportSuccessfulCommunication(self):
-        self.lastComm = time.time()
-        
     def isTimeForFallback(self):
-        if time.time() - self.lastComm > 60*60:
-            seconds = (datetime.now() - self.fallbackDateObject).total_seconds()
-            if seconds > 0:
-                # 00:00:00 on fallback date has passed
-                if not self.fallback_executed:
-                    return True
-        else:
-            #print("internet is still alive")
-            pass
-
+        if self.fallbackDateObject is None:
+            return False
+        seconds = (datetime.now() - self.fallbackDateObject).total_seconds()
+        if seconds > 0:
+            # 00:00:00 on fallback date has passed
+            return True
         return False
 
     def getIpAddress(self):
@@ -212,16 +208,14 @@ class IotDevice:
                 
                 #print ( "Send telemetry: %s" % json.dumps(telemetry,indent=4) )
                 sent = self.hub.post_telemetry(telemetry)
-                if sent:
-                    self.reportSuccessfulCommunication()                        
                 
                 if self.isTimeForFallback():
-                    # Have passed fallback time and has no internet. 
+                    # Have passed automatic fallback time
                     # Set default AC temp
                     print("Fallback activated @ {}".format(datetime.now()))
                     self.desired[KEY_TEMPERATURE_SETPOINT] = self.desired[KEY_FALLBACK_TEMP]
-                    self.device_twin_update(self.desired)
-                    self.fallback_executed = True
+                    self.airCondition.set_temp(self.desired[KEY_FALLBACK_TEMP])
+                    self.fallbackDateObject = None
                 
                 sys.stdout.flush()
 

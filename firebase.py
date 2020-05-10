@@ -77,13 +77,15 @@ class Firebase:
             except Exception as e:
                 print("FIREBASE: read_desired_state operation failed.")
                 print(e)
+                new_state = None
         else:
             print("Not logged in. Device twin not fetched at {}".format(datetime.now()))
 
-        if new_state != self.desired_state and new_state != None:
-            self.desired_state = new_state
-            if self.application:
-                self.application.device_twin_update(new_state)
+        if new_state != None:
+            if self.desired_state == None or new_state['updateTime'] != self.desired_state['updateTime']:
+                self.desired_state = new_state
+                if self.application:
+                    self.application.device_twin_update(new_state)
         
     # Report current state to cloud
     def update_reported_state(self, device_twin, bank='reported'):

@@ -17,28 +17,27 @@ class FirebaseRebooter:
         self.hub = pyrebase.initialize_app(self.config['db_config'])
         self.login()
         self.lock = threading.Lock()
-        print("Running")
+        print("Started at {}".format(datetime.now()))
 
     def store_logs(self, name):
         storage = self.hub.storage()
 
         storage.child("iot_log.txt").put("iot_log.txt", self.user['idToken'])
         url = storage.child("iot_log.txt").get_url(self.user['idToken'])
-        print("iot_log.txt URL: " + str(url))
 
         storage.child("rebooter_log.txt").put("rebooter_log.txt", self.user['idToken'])
         url = storage.child("rebooter_log.txt").get_url(self.user['idToken'])
-        print("rebooter_log.txt URL: " + str(url))
+        print("Logs uploaded to cloud at {}".format(datetime.now()))
 
     def run(self):
         retry = 60
         (self.org_state, self.org_getlogs) = self.read_reboot()
         while self.org_state == None:
-            print("Reboot state fetch failed. Retrying in 10s")
+            print("Reboot state fetch failed. Retrying in 10s at {}".format(datetime.now()))
             time.sleep(10)
             retry -= 1
             if (retry == 0):
-                print("Max number of fails. Rebooting now.")
+                print("Max number of fails. Rebooting at {}".format(datetime.now()))
                 sys.exit()
             (self.org_state, self.org_getlogs) = self.read_reboot()
         
@@ -49,14 +48,15 @@ class FirebaseRebooter:
         
         x = threading.Thread(target=self.reboot_poller, args=(1,), daemon=True)
         x.start()
-        
+        counter = 0
         while True:
             time.sleep(10)
             with self.lock:
                 if (self.reboot == True):
-                    print("Reboot ordered")
+                    print("Reboot ordered at {}".format(datetime.now()))
                     break
                 if (self.getlogs == True):
+                    print("Get logs ordered at {}".format(datetime.now()))
                     x = threading.Thread(target=self.store_logs, args=(1,), daemon=True)
                     x.start()
                     self.getlogs = False
@@ -65,10 +65,15 @@ class FirebaseRebooter:
                     self.kick = False
                 else:
                     self.missed_kicks += 1
-                    print("Missed kick #" + str(self.missed_kicks))
+                    if (self.missed_kicks > 1)
+                        print("Missed kick #{} at {}".format(self.missed_kicks, datetime.now()))
                     if (self.missed_kicks > 10):
-                        print("Max number of missed kicks. Rebooting")
+                        print("Max number of missed kicks. Rebooting at {}".format(datetime.now()))
                         break
+            counter += 1
+            if (counter > 360)
+                counter = 0
+                print("Alive and kicking at {}".format(datetime.now()))
 
     def reboot_poller(self, name):
         while True:
@@ -103,7 +108,7 @@ class FirebaseRebooter:
                 getlogs = db.child(self.hub_root, 'getlog').get(token=user['idToken']).val()
                 #print(new_state)
             except Exception as e:
-                print("FIREBASE: read_reboot operation failed.")
+                print("FIREBASE: read_reboot operation failed at {}".format(datetime.now()))
                 print(e)
         else:
             print("Not logged in. Reboot state not fetched at {}".format(datetime.now()))
@@ -122,7 +127,7 @@ class FirebaseRebooter:
             self.hub_root = 'users' + '/' + user['localId'] + '/' + self.deviceid
         except Exception as e:
             self.user = None
-            print("FIREBASE: Login failed.")
+            print("FIREBASE: Login failed at {}".format(datetime.now()))
             print(e)
 
     # Refresh Firebase token to keep connection alive
@@ -133,7 +138,7 @@ class FirebaseRebooter:
             self.user['refreshToken'] = refresh['refreshToken']
             self.user['idToken'] = refresh['idToken']
         except Exception as e:
-            print("FIREBASE: Refresh token failed.")
+            print("FIREBASE: Refresh token failed at {}".format(datetime.now()))
             print(e)
             self.login()
             
@@ -147,4 +152,5 @@ try:
     hub = FirebaseRebooter(device_config)
     hub.run()
 except Exception as e:
-    print("Exception: " + str(e))
+    print("Exception terminated application at {}".format(datetime.now()))
+    print(e)

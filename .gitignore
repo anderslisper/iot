@@ -114,3 +114,6 @@ device_config.json
 
 #Temp files
 desired_state.json
+
+#Pycharm project
+.idea/
