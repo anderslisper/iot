@@ -19,6 +19,8 @@ class FirebaseRebooter:
         self.lock = threading.Lock()
         print("Started at {}".format(datetime.now()))
 
+        sys.stdout.flush()
+
     def store_logs(self, name):
         storage = self.hub.storage()
 
@@ -28,6 +30,8 @@ class FirebaseRebooter:
         storage.child("rebooter_log.txt").put("rebooter_log.txt", self.user['idToken'])
         url = storage.child("rebooter_log.txt").get_url(self.user['idToken'])
         print("Logs uploaded to cloud at {}".format(datetime.now()))
+
+        sys.stdout.flush()
 
     def run(self):
         retry = 60
@@ -40,7 +44,8 @@ class FirebaseRebooter:
                 print("Max number of fails. Rebooting at {}".format(datetime.now()))
                 sys.exit()
             (self.org_state, self.org_getlogs) = self.read_reboot()
-        
+            sys.stdout.flush()
+
         self.reboot = False
         self.getlogs = True
         self.kick = True
@@ -65,15 +70,17 @@ class FirebaseRebooter:
                     self.kick = False
                 else:
                     self.missed_kicks += 1
-                    if (self.missed_kicks > 1)
+                    if (self.missed_kicks > 1):
                         print("Missed kick #{} at {}".format(self.missed_kicks, datetime.now()))
                     if (self.missed_kicks > 10):
                         print("Max number of missed kicks. Rebooting at {}".format(datetime.now()))
                         break
             counter += 1
-            if (counter > 360)
+            if (counter > 360):
                 counter = 0
                 print("Alive and kicking at {}".format(datetime.now()))
+
+            sys.stdout.flush()
 
     def reboot_poller(self, name):
         while True:
@@ -112,7 +119,8 @@ class FirebaseRebooter:
                 print(e)
         else:
             print("Not logged in. Reboot state not fetched at {}".format(datetime.now()))
-        
+        sys.stdout.flush()
+
         #print("Reboot: " + str(reboot))
         
         return (reboot, getlogs)
@@ -129,6 +137,7 @@ class FirebaseRebooter:
             self.user = None
             print("FIREBASE: Login failed at {}".format(datetime.now()))
             print(e)
+            sys.stdout.flush()
 
     # Refresh Firebase token to keep connection alive
     def refresh_token(self):
@@ -140,6 +149,7 @@ class FirebaseRebooter:
         except Exception as e:
             print("FIREBASE: Refresh token failed at {}".format(datetime.now()))
             print(e)
+            sys.stdout.flush()
             self.login()
             
 
@@ -154,3 +164,4 @@ try:
 except Exception as e:
     print("Exception terminated application at {}".format(datetime.now()))
     print(e)
+    sys.stdout.flush()
