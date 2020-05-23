@@ -35,6 +35,7 @@ KEY_SW                   = "software"
 KEY_SW_VERSION           = "version"
 KEY_SW_DATE              = "date"
 KEY_IP_ADDRESS           = "ipAddress"
+KEY_AC_STATUS            = "acStatus"
 
 # These values are used as default if keys are lacking
 DESIRED_STATE_TEMPLATE = { 
@@ -48,7 +49,7 @@ class IotDevice:
     def __init__(self, device_config):
         self.device_config = device_config
         self.reported_temp_alert = False
-        self.fallback_activated = None
+        self.fallback_activated = False
         self.boot_time = Common.getCurrentUTCTime()
         self.ip_address = self.getIpAddress()
 
@@ -79,9 +80,11 @@ class IotDevice:
             if self.fallbackDateObject < update_time:
                 # Desired state updated since fallback, so ignore it
                 self.fallbackDateObject = None
+                self.fallback_activated = False
         except Exception as e:
             print(e.message)
             self.fallbackDateObject = None
+            self.fallback_activated = False
             print("Fallback date format not YY-MM-DD " + self.desired[KEY_FALLBACK_DATE])
 
     def wash_desired(self):
@@ -97,19 +100,19 @@ class IotDevice:
         self.desired = desired
         self.wash_desired()
 
-        print ( "New desired state received: %s" % json.dumps(self.desired, indent=4) )
+        print ("New desired state received: %s" % json.dumps(self.desired, indent=4) )
         try:
             # Save new state to disk (to be read at boot)
             with open('desired_state.json', 'w') as f:
                 json.dump(self.desired, f)                
             # Set new filter time
             self.temperature.set_filter_time(self.desired[KEY_TELEMETRY_INTERVAL])
-            # Report new state to HUB
-            self.update_reported_state()
             # Set AC temp
             self.airCondition.set_temp(self.desired[KEY_TEMPERATURE_SETPOINT])
-
+            # Fallback date update
             self.set_fallback_date()
+            # Report new state to HUB
+            self.update_reported_state()
         except Exception as e:
             print(e)
 
@@ -121,7 +124,11 @@ class IotDevice:
         reported[KEY_BOOT_TIME]       = self.boot_time
         reported[KEY_TELEMETRY_ALERT] = self.reported_temp_alert
         reported[KEY_IP_ADDRESS]      = self.ip_address
-        if self.fallbackDateObject is None:
+        if self.airCondition.ac_active:
+            reported[KEY_AC_STATUS] = "AC active"
+        else:
+            reported[KEY_AC_STATUS] = ""
+        if self.fallback_activated:
             reported[KEY_FALLBACK_ACTIVATED] = "Yes"
         else:
             reported[KEY_FALLBACK_ACTIVATED] = "No"
@@ -188,7 +195,7 @@ class IotDevice:
 
                 telemetry = {}
                 try:
-                    telemetry[KEY_TEMPERATURE_SETPOINT] = self.desired[KEY_TEMPERATURE_SETPOINT]
+                    telemetry[KEY_TEMPERATURE_SETPOINT] = self.airCondition.get_current_temp()
                 except:
                     # No temperature set point
                     pass
@@ -206,9 +213,6 @@ class IotDevice:
                 if weather is not None:
                     telemetry[KEY_OUTDOOR_CONDITIONS] = weather
                 
-                #print ( "Send telemetry: %s" % json.dumps(telemetry,indent=4) )
-                sent = self.hub.post_telemetry(telemetry)
-                
                 if self.isTimeForFallback():
                     # Have passed automatic fallback time
                     # Set default AC temp
@@ -216,7 +220,12 @@ class IotDevice:
                     self.desired[KEY_TEMPERATURE_SETPOINT] = self.desired[KEY_FALLBACK_TEMP]
                     self.airCondition.set_temp(self.desired[KEY_FALLBACK_TEMP])
                     self.fallbackDateObject = None
-                
+                    self.fallback_activated = True
+                    self.update_reported_state()
+
+                # print ( "Send telemetry: %s" % json.dumps(telemetry,indent=4) )
+                sent = self.hub.post_telemetry(telemetry)
+
                 sys.stdout.flush()
 
                 try:
