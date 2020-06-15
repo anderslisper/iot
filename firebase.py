@@ -14,7 +14,7 @@ class Firebase:
 
         self.deviceid = device_config.deviceid
         self.hub = pyrebase.initialize_app(self.config['db_config'])
-        self.FIREBASE_DEVICE_TWIN_POLL_TIME = 5*60 # 5 min. Tradeoff between resource util and response time when changing set temperature
+        self.FIREBASE_DEVICE_TWIN_POLL_TIME = 1*60 # 1 min. Tradeoff between resource util and response time when changing set temperature
         self.FIREBASE_TOKEN_REFRESH_TIME   = 40*60 # 40 min. Should be less than an hour 
         self.token_renewal_time    = -10000
         self.device_twin_poll_time = -10000

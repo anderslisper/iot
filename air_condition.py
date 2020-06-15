@@ -55,6 +55,7 @@ class AirCondition:
         return self.currentTemp
 
     def send_ir_code(self, temp):
+        self.ac_active = False
         if temp == AC_OFF:
             ircode = "AC_OFF"
         elif temp == AC_ON:
@@ -66,7 +67,6 @@ class AirCondition:
             self.ac_active = True
         else:
             ircode = "HEAT_HIGH_{}".format(temp)
-            self.ac_active = False
 
         if self.hardware:
             for i in range(IR_REPEATS):
